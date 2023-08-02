@@ -14,3 +14,4 @@ def save_picture(url, pathname, name):
     os.makedirs(pathname, exist_ok=True)
     with open(f'{pathname}/{name}{get_file_extension(url)}', 'wb') as file:
         file.write(response.content)
+

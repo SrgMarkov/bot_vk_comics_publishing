@@ -17,3 +17,4 @@ if __name__ == '__main__':
     command_arguments.add_argument('count', help='Количество комиксов', type=int)
     args = command_arguments.parse_args()
     get_comics(args.count)
+
