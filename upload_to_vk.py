@@ -7,7 +7,7 @@ from urllib.parse import urlparse
 
 
 VK_API_URL = 'https://api.vk.com/method/'
-XKCD_COMICS_COUNT = 2811
+XKCD_COMICS_COUNT = 1
 
 
 def get_file_extension(url):
@@ -39,9 +39,9 @@ if __name__ == '__main__':
     picture = get_comics(randint(1, XKCD_COMICS_COUNT))
 
     vk_parameters = {'access_token': vk_token, 'v': 5.131, 'group_id': group_id}
-    vk_response = requests.get(f'{VK_API_URL}photos.getWallUploadServer', params=vk_parameters)
-    vk_response.raise_for_status()
-    upload_url = vk_response.json()['response']['upload_url']
+    wall_upload_server_response = requests.get(f'{VK_API_URL}photos.getWallUploadServer', params=vk_parameters)
+    wall_upload_server_response.raise_for_status()
+    upload_url = wall_upload_server_response.json()['response']['upload_url']
 
     with open(picture["picture_file"], 'rb') as picture_file:
         upload_files = {'photo': picture_file}
@@ -51,14 +51,14 @@ if __name__ == '__main__':
         upload_parameters = {'photo': upload_response.json()['photo'],
                              'server': upload_response.json()['server'],
                              'hash': upload_response.json()['hash']}
-        upload_response = requests.post(f'{VK_API_URL}photos.saveWallPhoto', params=(upload_parameters | vk_parameters))
-        upload_response.raise_for_status()
-        attachments_parameters = upload_response.json()["response"][0]
+        save_wall_photo_response = requests.post(f'{VK_API_URL}photos.saveWallPhoto', params=(upload_parameters | vk_parameters))
+        save_wall_photo_response.raise_for_status()
+        attachments_parameters = save_wall_photo_response.json()["response"][0]
         post_parameters = {'owner_id': f'-{group_id}',
                            'from_group': 1,
                            'message': picture['picture_text'],
                            'attachments': f'photo{attachments_parameters["owner_id"]}_{attachments_parameters["id"]}'}
         post_response = requests.post(f'{VK_API_URL}wall.post', params=(post_parameters | vk_parameters))
         os.remove(picture["picture_file"])
-        upload_response.raise_for_status()
+        post_response.raise_for_status()
 
