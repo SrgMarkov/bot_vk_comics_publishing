@@ -32,8 +32,8 @@ def get_comic(page):
 
 if __name__ == '__main__':
     load_dotenv()
-    group_id = os.getenv('VK_GROUP_ID')
-    vk_token = os.getenv('VK_APP_TOKEN')
+    group_id = os.environ['VK_GROUP_ID']
+    vk_token = os.environ['VK_APP_TOKEN']
 
     picture = get_comic(randint(1, XKCD_COMICS_COUNT))
 
