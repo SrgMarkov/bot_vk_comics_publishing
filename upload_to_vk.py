@@ -22,7 +22,7 @@ def save_picture(url, name):
     return f'{name}{get_file_extension(url)}'
 
 
-def get_comics(page):
+def get_comic(page):
     response = requests.get(f'https://xkcd.com/{page}/info.0.json')
     response.raise_for_status()
     comic = response.json()
