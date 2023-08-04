@@ -30,34 +30,45 @@ def get_comic(page):
     return {'picture_file': picture_filename, 'picture_text': comic['alt']}
 
 
+def get_server_url_to_upload(params):
+    wall_upload_server_response = requests.get(f'{VK_API_URL}photos.getWallUploadServer', params=params)
+    wall_upload_server_response.raise_for_status()
+    return wall_upload_server_response.json()['response']['upload_url']
+
+
+def upload_comic_to_server(params):
+    with open(picture['picture_file'], 'rb') as picture_file:
+        upload_files = {'photo': picture_file}
+        upload_response = requests.post(get_server_url_to_upload(params), files=upload_files)
+    upload_response.raise_for_status()
+    upload_parameters = upload_response.json()
+    return {'photo': upload_parameters['photo'],
+            'server': upload_parameters['server'],
+            'hash': upload_parameters['hash']}
+
+
+def save_comic(params):
+    save_wall_photo_response = requests.post(f'{VK_API_URL}photos.saveWallPhoto',
+                                             params=(upload_comic_to_server(params) | params))
+    save_wall_photo_response.raise_for_status()
+    attachments_parameters = save_wall_photo_response.json()["response"][0]
+    return {'owner_id': f'-{group_id}',
+            'from_group': 1,
+            'message': picture['picture_text'],
+            'attachments': f'photo{attachments_parameters["owner_id"]}_{attachments_parameters["id"]}'}
+
+
+def post_comic_in_vk_wall(params):
+    post_response = requests.post(f'{VK_API_URL}wall.post', params=(save_comic(params) | params))
+    os.remove(picture["picture_file"])
+    post_response.raise_for_status()
+
+
 if __name__ == '__main__':
     load_dotenv()
     group_id = os.environ['VK_GROUP_ID']
     vk_token = os.environ['VK_APP_TOKEN']
-
     picture = get_comic(randint(1, XKCD_COMICS_COUNT))
-
     vk_parameters = {'access_token': vk_token, 'v': 5.131, 'group_id': group_id}
-    wall_upload_server_response = requests.get(f'{VK_API_URL}photos.getWallUploadServer', params=vk_parameters)
-    wall_upload_server_response.raise_for_status()
-    upload_url = wall_upload_server_response.json()['response']['upload_url']
+    post_comic_in_vk_wall(vk_parameters)
 
-    with open(picture['picture_file'], 'rb') as picture_file:
-        upload_files = {'photo': picture_file}
-        upload_response = requests.post(upload_url, files=upload_files)
-    upload_response.raise_for_status()
-    upload_parameters = upload_response.json()
-    save_wall_photo_parameters = {'photo': upload_parameters['photo'],
-                                  'server': upload_parameters['server'],
-                                  'hash': upload_parameters['hash']}
-    save_wall_photo_response = requests.post(f'{VK_API_URL}photos.saveWallPhoto',
-                                             params=(save_wall_photo_parameters | vk_parameters))
-    save_wall_photo_response.raise_for_status()
-    attachments_parameters = save_wall_photo_response.json()["response"][0]
-    post_parameters = {'owner_id': f'-{group_id}',
-                       'from_group': 1,
-                       'message': picture['picture_text'],
-                       'attachments': f'photo{attachments_parameters["owner_id"]}_{attachments_parameters["id"]}'}
-    post_response = requests.post(f'{VK_API_URL}wall.post', params=(post_parameters | vk_parameters))
-    os.remove(picture["picture_file"])
-    post_response.raise_for_status()
