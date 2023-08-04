@@ -49,6 +49,7 @@ def get_server_url_to_upload(params):
         read_vk_response(wall_upload_server_response)
         return wall_upload_server_response.json()['response']['upload_url']
     except VKResponseError:
+        os.remove(picture["picture_file"])
         return exit('get_server_url_to_upload returned with Error')
 
 
@@ -57,6 +58,7 @@ def upload_comic_to_server(params):
         upload_files = {'photo': picture_file}
         upload_response = requests.post(get_server_url_to_upload(params), files=upload_files)
     upload_response.raise_for_status()
+    os.remove(picture["picture_file"])
     try:
         read_vk_response(upload_response)
         upload_parameters = upload_response.json()
@@ -84,7 +86,6 @@ def save_comic(params):
 
 def post_comic_in_vk_wall(params):
     post_response = requests.post(f'{VK_API_URL}wall.post', params=(save_comic(params) | params))
-    os.remove(picture["picture_file"])
     post_response.raise_for_status()
     try:
         read_vk_response(post_response)
