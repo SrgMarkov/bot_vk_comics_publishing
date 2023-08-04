@@ -35,7 +35,7 @@ if __name__ == '__main__':
     group_id = os.getenv('VK_GROUP_ID')
     vk_token = os.getenv('VK_APP_TOKEN')
 
-    picture = get_comics(randint(1, XKCD_COMICS_COUNT))
+    picture = get_comic(randint(1, XKCD_COMICS_COUNT))
 
     vk_parameters = {'access_token': vk_token, 'v': 5.131, 'group_id': group_id}
     wall_upload_server_response = requests.get(f'{VK_API_URL}photos.getWallUploadServer', params=vk_parameters)
