@@ -46,7 +46,6 @@ def get_server_url_to_upload(params):
     wall_upload_server_response = requests.get(f'{VK_API_URL}photos.getWallUploadServer', params=params)
     wall_upload_server_response.raise_for_status()
     read_vk_response(wall_upload_server_response)
-    os.remove(picture["picture_file"])
     return wall_upload_server_response.json()['response']['upload_url']
 
 
@@ -102,3 +101,5 @@ if __name__ == '__main__':
             print('upload_comic_to_server returned that nothing to upload')
     except VKResponseError:
         print('get_server_url_to_upload returned with Error')
+    finally:
+        os.remove(picture["picture_file"])
