@@ -13,7 +13,7 @@ class VKResponseError(TypeError):
     pass
 
 
-def read_vk_response(self):
+def check_vk_response(self):
     vk_response = self.json()
     if 'error' in vk_response:
         raise VKResponseError('Response returned with Error')
@@ -46,7 +46,7 @@ def get_comic(page):
 def get_server_url_to_upload(params):
     wall_upload_server_response = requests.get(f'{VK_API_URL}photos.getWallUploadServer', params=params)
     wall_upload_server_response.raise_for_status()
-    read_vk_response(wall_upload_server_response)
+    check_vk_response(wall_upload_server_response)
     return wall_upload_server_response.json()['response']['upload_url']
 
 
@@ -56,7 +56,7 @@ def upload_comic_to_server(params):
         upload_response = requests.post(params, files=upload_files)
     upload_response.raise_for_status()
     os.remove(picture["picture_file"])
-    read_vk_response(upload_response)
+    check_vk_response(upload_response)
     upload_parameters = upload_response.json()
     return {'photo': upload_parameters['photo'],
             'server': upload_parameters['server'],
@@ -66,7 +66,7 @@ def upload_comic_to_server(params):
 def save_comic(params):
     save_wall_photo_response = requests.post(f'{VK_API_URL}photos.saveWallPhoto', params=params)
     save_wall_photo_response.raise_for_status()
-    read_vk_response(save_wall_photo_response)
+    check_vk_response(save_wall_photo_response)
     attachments_parameters = save_wall_photo_response.json()["response"][0]
     return {'owner_id': f'-{group_id}',
             'from_group': 1,
@@ -77,7 +77,7 @@ def save_comic(params):
 def post_comic_in_vk_wall(params):
     post_response = requests.post(f'{VK_API_URL}wall.post', params=params)
     post_response.raise_for_status()
-    read_vk_response(post_response)
+    check_vk_response(post_response)
 
 
 if __name__ == '__main__':
