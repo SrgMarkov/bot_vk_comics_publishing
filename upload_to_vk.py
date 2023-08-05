@@ -14,9 +14,10 @@ class VKResponseError(TypeError):
 
 
 def read_vk_response(self):
-    if 'error' in self.json():
+    vk_response = self.json()
+    if 'error' in vk_response:
         raise VKResponseError('Response returned with Error')
-    if 'photo' in self.json():
+    if 'photo' in vk_response:
         if self.json()['photo'] == '[]':
             raise VKResponseError('No photo to upload')
 
