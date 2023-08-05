@@ -56,7 +56,7 @@ def get_server_url_to_upload(params):
 def upload_comic_to_server(params):
     with open(picture['picture_file'], 'rb') as picture_file:
         upload_files = {'photo': picture_file}
-        upload_response = requests.post(get_server_url_to_upload(params), files=upload_files)
+        upload_response = requests.post(params, files=upload_files)
     upload_response.raise_for_status()
     os.remove(picture["picture_file"])
     try:
@@ -70,8 +70,7 @@ def upload_comic_to_server(params):
 
 
 def save_comic(params):
-    save_wall_photo_response = requests.post(f'{VK_API_URL}photos.saveWallPhoto',
-                                             params=(upload_comic_to_server(params) | params))
+    save_wall_photo_response = requests.post(f'{VK_API_URL}photos.saveWallPhoto', params=params)
     save_wall_photo_response.raise_for_status()
     try:
         read_vk_response(save_wall_photo_response)
@@ -85,7 +84,7 @@ def save_comic(params):
 
 
 def post_comic_in_vk_wall(params):
-    post_response = requests.post(f'{VK_API_URL}wall.post', params=(save_comic(params) | params))
+    post_response = requests.post(f'{VK_API_URL}wall.post', params=params)
     post_response.raise_for_status()
     try:
         read_vk_response(post_response)
@@ -99,4 +98,7 @@ if __name__ == '__main__':
     vk_token = os.environ['VK_APP_TOKEN']
     picture = get_comic(randint(1, XKCD_COMICS_COUNT))
     vk_parameters = {'access_token': vk_token, 'v': 5.131, 'group_id': group_id}
-    post_comic_in_vk_wall(vk_parameters)
+    params_to_upload = get_server_url_to_upload(vk_parameters)
+    save_comic_params = upload_comic_to_server(params_to_upload) | vk_parameters
+    post_comic_params = save_comic(save_comic_params) | vk_parameters
+    post_comic_in_vk_wall(post_comic_params)
