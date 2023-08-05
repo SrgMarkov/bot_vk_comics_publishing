@@ -8,6 +8,7 @@ from urllib.parse import urlparse
 VK_API_URL = 'https://api.vk.com/method/'
 VK_API_VERSION = 5.131
 XKCD_COMICS_COUNT = 2811
+PUBLICATION_FROM_GROUP = 1
 
 
 class VKResponseError(TypeError):
@@ -40,8 +41,7 @@ def get_comic(page):
     response = requests.get(f'https://xkcd.com/{page}/info.0.json')
     response.raise_for_status()
     comic = response.json()
-    picture_filename = save_picture(comic['img'], comic['title'])
-    return {'picture_file': picture_filename, 'picture_text': comic['alt']}
+    return save_picture(comic['img'], comic['title']), comic['alt']
 
 
 def get_server_url_to_upload(token, group):
@@ -52,9 +52,9 @@ def get_server_url_to_upload(token, group):
     return wall_upload_server_response.json()['response']['upload_url']
 
 
-def upload_comic_to_server(url):
-    with open(picture['picture_file'], 'rb') as picture_file:
-        upload_files = {'photo': picture_file}
+def upload_comic_to_server(url, picture_file):
+    with open(picture_file, 'rb') as file_to_upload:
+        upload_files = {'photo': file_to_upload}
         upload_response = requests.post(url, files=upload_files)
     upload_response.raise_for_status()
     check_vk_response(upload_response)
@@ -77,16 +77,15 @@ def save_comic(token, group, photo, server, server_hash):
     attachments_parameters = save_wall_photo_response.json()["response"][0]
     return {'owner_id': f'-{group_id}',
             'from_group': 1,
-            'message': picture['picture_text'],
             'attachments': f'photo{attachments_parameters["owner_id"]}_{attachments_parameters["id"]}'}
 
 
-def post_comic_in_vk_wall(token, group, owner, from_group, message, attachments):
+def post_comic_in_vk_wall(token, group, owner, message, attachments):
     post_parameters = {'access_token': token,
                        'v': VK_API_VERSION,
                        'group_id': group,
                        'owner_id': owner,
-                       'from_group': from_group,
+                       'from_group': PUBLICATION_FROM_GROUP,
                        'message': message,
                        'attachments': attachments}
     post_response = requests.post(f'{VK_API_URL}wall.post', params=post_parameters)
@@ -98,11 +97,11 @@ if __name__ == '__main__':
     load_dotenv()
     group_id = os.environ['VK_GROUP_ID']
     vk_token = os.environ['VK_APP_TOKEN']
-    picture = get_comic(randint(1, XKCD_COMICS_COUNT))
+    comic_file, comic_text = get_comic(randint(1, XKCD_COMICS_COUNT))
     try:
         upload_url = get_server_url_to_upload(vk_token, group_id)
         try:
-            save_comic_params = upload_comic_to_server(upload_url)
+            save_comic_params = upload_comic_to_server(upload_url, comic_file)
             try:
                 post_comic_params = save_comic(vk_token, group_id,
                                                save_comic_params['photo'],
@@ -111,8 +110,7 @@ if __name__ == '__main__':
                 try:
                     post_comic_in_vk_wall(vk_token, group_id,
                                           post_comic_params['owner_id'],
-                                          post_comic_params['from_group'],
-                                          post_comic_params['message'],
+                                          comic_text,
                                           post_comic_params['attachments'])
                 except VKResponseError:
                     print('post_comic_in_vk_wall returned with Error')
@@ -123,4 +121,4 @@ if __name__ == '__main__':
     except VKResponseError:
         print('get_server_url_to_upload returned with Error')
     finally:
-        os.remove(picture["picture_file"])
+        os.remove(comic_file)
