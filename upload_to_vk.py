@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 from urllib.parse import urlparse
 
 VK_API_URL = 'https://api.vk.com/method/'
+VK_API_VERSION = 5.131
 XKCD_COMICS_COUNT = 2811
 
 
@@ -43,19 +44,19 @@ def get_comic(page):
     return {'picture_file': picture_filename, 'picture_text': comic['alt']}
 
 
-def get_server_url_to_upload(params):
-    wall_upload_server_response = requests.get(f'{VK_API_URL}photos.getWallUploadServer', params=params)
+def get_server_url_to_upload(token, group):
+    vk_parameters = {'access_token': token, 'v': VK_API_VERSION, 'group_id': group}
+    wall_upload_server_response = requests.get(f'{VK_API_URL}photos.getWallUploadServer', params=vk_parameters)
     wall_upload_server_response.raise_for_status()
     check_vk_response(wall_upload_server_response)
     return wall_upload_server_response.json()['response']['upload_url']
 
 
-def upload_comic_to_server(params):
+def upload_comic_to_server(url):
     with open(picture['picture_file'], 'rb') as picture_file:
         upload_files = {'photo': picture_file}
-        upload_response = requests.post(params, files=upload_files)
+        upload_response = requests.post(url, files=upload_files)
     upload_response.raise_for_status()
-    os.remove(picture["picture_file"])
     check_vk_response(upload_response)
     upload_parameters = upload_response.json()
     return {'photo': upload_parameters['photo'],
@@ -63,8 +64,14 @@ def upload_comic_to_server(params):
             'hash': upload_parameters['hash']}
 
 
-def save_comic(params):
-    save_wall_photo_response = requests.post(f'{VK_API_URL}photos.saveWallPhoto', params=params)
+def save_comic(token, group, photo, server, server_hash):
+    save_comic_parameters = {'access_token': token,
+                             'v': VK_API_VERSION,
+                             'group_id': group,
+                             'photo': photo,
+                             'server': server,
+                             'hash': server_hash}
+    save_wall_photo_response = requests.post(f'{VK_API_URL}photos.saveWallPhoto', params=save_comic_parameters)
     save_wall_photo_response.raise_for_status()
     check_vk_response(save_wall_photo_response)
     attachments_parameters = save_wall_photo_response.json()["response"][0]
@@ -74,8 +81,15 @@ def save_comic(params):
             'attachments': f'photo{attachments_parameters["owner_id"]}_{attachments_parameters["id"]}'}
 
 
-def post_comic_in_vk_wall(params):
-    post_response = requests.post(f'{VK_API_URL}wall.post', params=params)
+def post_comic_in_vk_wall(token, group, owner, from_group, message, attachments):
+    post_parameters = {'access_token': token,
+                       'v': VK_API_VERSION,
+                       'group_id': group,
+                       'owner_id': owner,
+                       'from_group': from_group,
+                       'message': message,
+                       'attachments': attachments}
+    post_response = requests.post(f'{VK_API_URL}wall.post', params=post_parameters)
     post_response.raise_for_status()
     check_vk_response(post_response)
 
@@ -85,15 +99,21 @@ if __name__ == '__main__':
     group_id = os.environ['VK_GROUP_ID']
     vk_token = os.environ['VK_APP_TOKEN']
     picture = get_comic(randint(1, XKCD_COMICS_COUNT))
-    vk_parameters = {'access_token': vk_token, 'v': 5.131, 'group_id': group_id}
     try:
-        params_to_upload = get_server_url_to_upload(vk_parameters)
+        upload_url = get_server_url_to_upload(vk_token, group_id)
         try:
-            save_comic_params = upload_comic_to_server(params_to_upload) | vk_parameters
+            save_comic_params = upload_comic_to_server(upload_url)
             try:
-                post_comic_params = save_comic(save_comic_params) | vk_parameters
+                post_comic_params = save_comic(vk_token, group_id,
+                                               save_comic_params['photo'],
+                                               save_comic_params['server'],
+                                               save_comic_params['hash'])
                 try:
-                    post_comic_in_vk_wall(post_comic_params)
+                    post_comic_in_vk_wall(vk_token, group_id,
+                                          post_comic_params['owner_id'],
+                                          post_comic_params['from_group'],
+                                          post_comic_params['message'],
+                                          post_comic_params['attachments'])
                 except VKResponseError:
                     print('post_comic_in_vk_wall returned with Error')
             except VKResponseError:
