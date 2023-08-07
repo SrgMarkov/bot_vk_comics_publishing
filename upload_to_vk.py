@@ -18,10 +18,12 @@ class VKResponseError(TypeError):
 def check_vk_response(self):
     vk_response = self.json()
     if 'error' in vk_response:
-        raise VKResponseError('Response returned with Error')
+        error_msg = f'Error {vk_response["error"]["error_code"]}: {vk_response["error"]["error_msg"]}'
+        raise VKResponseError(error_msg)
     if 'photo' in vk_response:
         if self.json()['photo'] == '[]':
-            raise VKResponseError('No photo to upload')
+            error_msg = 'upload_comic_to_server returned that nothing to upload'
+            raise VKResponseError(error_msg)
 
 
 def get_file_extension(url):
@@ -96,19 +98,10 @@ if __name__ == '__main__':
     comic_file, comic_text = get_comic(randint(1, XKCD_COMICS_COUNT))
     try:
         upload_url = get_server_url_to_upload(vk_token, group_id)
-        try:
-            saving_photo, server_to_save, hash_to_save = upload_comic_to_server(upload_url, comic_file)
-            try:
-                post_attachments = save_comic(vk_token, group_id, saving_photo, server_to_save, hash_to_save)
-                try:
-                    post_comic_in_vk_wall(vk_token, group_id, comic_text, post_attachments)
-                except VKResponseError:
-                    print('post_comic_in_vk_wall returned with Error')
-            except VKResponseError:
-                print('save_comic returned with Error')
-        except VKResponseError:
-            print('upload_comic_to_server returned that nothing to upload')
-    except VKResponseError:
-        print('get_server_url_to_upload returned with Error')
+        saving_photo, server_to_save, hash_to_save = upload_comic_to_server(upload_url, comic_file)
+        post_attachments = save_comic(vk_token, group_id, saving_photo, server_to_save, hash_to_save)
+        post_comic_in_vk_wall(vk_token, group_id, comic_text, post_attachments)
+    except VKResponseError as error:
+        print(error)
     finally:
         os.remove(comic_file)
